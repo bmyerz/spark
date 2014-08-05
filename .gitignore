@@ -59,3 +59,7 @@ metastore/
 warehouse/
 TempStatsStore/
 sql/hive-thriftserver/test_warehouses
+
+
+# gups
+slurm-*.out

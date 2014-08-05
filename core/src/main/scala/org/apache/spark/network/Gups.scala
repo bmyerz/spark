@@ -33,6 +33,8 @@ object Gups {
       }
     }
 
+    // only way to let connection manager use the appropriate hostname
+    org.apache.spark.util.Utils.setCustomHostname(hosts.get(myid).host)
 
 
     val AGlobalSize = 1e2.toInt

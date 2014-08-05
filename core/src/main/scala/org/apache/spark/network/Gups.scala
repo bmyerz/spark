@@ -45,22 +45,26 @@ object Gups {
 
     val nprocesses = hosts.size()
     val dist = new BlockDistribution(nprocesses, AGlobalSize);
-    val ALocal = Array.fill[Int](dist.getRangeForBlock(myid).size())(0)
+    val Alocalsize = dist.getRangeForBlock(myid).size()
+    if (Alocalsize > Integer.MAX_VALUE) throw new IllegalStateException("Alocalsize too large")
+    val ALocal = Array.fill[Int](Alocalsize.toInt)(0)
 
 
     val conf = new SparkConf
     val manager = new ConnectionManager(hosts.get(myid).port, conf, new SecurityManager(conf))
     manager.onReceiveMessage((msg: Message, id: ConnectionManagerId) => {
-      val ind = msg.getChunkForReceiving(4).get.buffer.getInt();
+      val ind = msg.getChunkForReceiving(8).get.buffer.getLong();
 
       val localOffset = ind - dist.getRangeForBlock(myid).leftInclusive
-      println(myid + " Received [" + msg + "]("+ ind + ") to local offset " + localOffset + " from [" + id + "]")
+      if (localOffset > Integer.MAX_VALUE) throw new IllegalStateException("got local offset too large")
+
+      //println(myid + " Received [" + msg + "]("+ ind + ") to local offset " + localOffset + " from [" + id + "]")
 
       if (ind < dist.getRangeForBlock(myid).leftInclusive
         || ind >= dist.getRangeForBlock(myid).rightExclusive)
         throw new Exception("got " + localOffset + " from ["+ msg + "](" + ind + ") from [" + id + "]")
 
-      ALocal(localOffset)+=1
+      ALocal(localOffset.toInt)+=1
 
       None
     })
@@ -69,9 +73,9 @@ object Gups {
     // Generate B
     val rand = new Random();
     System.out.print("Generating B[]...");
-    val B = new ArrayBuffer[Int]()
+    val B = new ArrayBuffer[Long]()
     for (i <- 0L until numUpdates) {
-      B += rand.nextInt(AGlobalSize);
+      B += (rand.nextDouble()*AGlobalSize.toDouble).toLong
     }
     System.out.println("done");
     ////////////////////////////////
@@ -98,20 +102,22 @@ object Gups {
 
   def testParallelSending(manager: ConnectionManager,
                           hosts: util.ArrayList[ConnectionManagerId],
-                          B: Array[Int],
+                          B: Array[Long],
                           dist: BlockDistribution) {
     println("--------------------------")
     println("Parallel Sending")
     println("--------------------------")
-    val size = 4 //10 * 1024 * 1024
+    val size = 8 //10 * 1024 * 1024
 
     val startTime = System.currentTimeMillis
     B.map(i => {
-      val b = ByteBuffer.allocate(size).putInt(i)
+      val b = ByteBuffer.allocate(size).putLong(i)
       b.flip
-      val target = hosts.get(dist.getBlockIdForIndex(i))
+      val targetid = dist.getBlockIdForIndex(i)
+      if (targetid > Integer.MAX_VALUE) throw new IllegalStateException("targetid too large")
+      val target = hosts.get(targetid.toInt)
       val bufferMessage = Message.createBufferMessage(b)
-      manager.sendMessageReliably(hosts.get(dist.getBlockIdForIndex(i)), bufferMessage)
+      manager.sendMessageReliably(target, bufferMessage)
     }).foreach(f => {
       val g = Await.result(f, 1 second)
       if (!g.isDefined) println("Failed")

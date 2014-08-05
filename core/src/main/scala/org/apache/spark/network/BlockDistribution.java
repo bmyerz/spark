@@ -1,17 +1,17 @@
 package org.apache.spark.network;
 
 public class BlockDistribution {
-  private int blockSizeMin;
-  private int remainder;
+  private long blockSizeMin;
+  private long remainder;
 
   public static class Range {
-    public final int leftInclusive;
-    public final int rightExclusive;
-    public Range(int leftInclusive, int rightExclusive) {
+    public final long leftInclusive;
+    public final long rightExclusive;
+    public Range(long leftInclusive, long rightExclusive) {
       this.leftInclusive = leftInclusive;
       this.rightExclusive = rightExclusive;
     }
-    public int size() {
+    public long size() {
       return rightExclusive-leftInclusive;
     }
   }
@@ -23,41 +23,30 @@ public class BlockDistribution {
    * @param numBlocks number of blocks to distribute across
    * @param numElements number of elements
    */
-  public BlockDistribution(int numBlocks, int numElements) {
+  public BlockDistribution(long numBlocks, long numElements) {
     this.blockSizeMin = numElements/numBlocks;
     this.remainder = numElements%numBlocks;
   }
 
-  public BlockDistribution(int numBlocks, long numElements) {
-    long blockSizeMin = numElements/numBlocks;
-    if (blockSizeMin > Integer.MAX_VALUE) throw new IllegalArgumentException("numElements/numBlocks must fit in Integer");
-    this.blockSizeMin = (int)blockSizeMin;
-
-    long remainder = numElements%numBlocks;
-    if (remainder > Integer.MAX_VALUE) throw new IllegalArgumentException("this should not happen");
-    this.remainder = (int)remainder;
-  }
-  
-  public Range getRangeForBlock(int blockId) {
+  public Range getRangeForBlock(long blockId) {
     // first remainder blocks get +1 elements
     if (blockId < remainder) {
-      int size = blockSizeMin + 1;
-      int left = (blockSizeMin+1)*blockId;
+      long size = blockSizeMin + 1;
+      long left = (blockSizeMin+1)*blockId;
       return new Range(left, left+size);
     } else { 
       // after remainder, blocks get +0 elements
-      int size = blockSizeMin;
-      int left = (blockSizeMin+1)*remainder+blockSizeMin*(blockId-remainder);
+      long size = blockSizeMin;
+      long left = (blockSizeMin+1)*remainder+blockSizeMin*(blockId-remainder);
       return new Range(left, left+size);
     }
   }
 
-  public int getBlockIdForIndex(int index) {
+  public long getBlockIdForIndex(long index) {
     if (index/(blockSizeMin+1) < remainder) {
       return index/(blockSizeMin+1);
     } else {
       return (index-remainder) / blockSizeMin;
     }
   }
-
 }

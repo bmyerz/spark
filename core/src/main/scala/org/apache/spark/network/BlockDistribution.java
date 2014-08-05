@@ -27,6 +27,16 @@ public class BlockDistribution {
     this.blockSizeMin = numElements/numBlocks;
     this.remainder = numElements%numBlocks;
   }
+
+  public BlockDistribution(int numBlocks, long numElements) {
+    long blockSizeMin = numElements/numBlocks;
+    if (blockSizeMin > Integer.MAX_VALUE) throw new IllegalArgumentException("numElements/numBlocks must fit in Integer");
+    this.blockSizeMin = (int)blockSizeMin;
+
+    long remainder = numElements%numBlocks;
+    if (remainder > Integer.MAX_VALUE) throw new IllegalArgumentException("this should not happen");
+    this.remainder = (int)remainder;
+  }
   
   public Range getRangeForBlock(int blockId) {
     // first remainder blocks get +1 elements

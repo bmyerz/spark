@@ -17,12 +17,19 @@ import scala.collection.mutable.ArrayBuffer
  */
 object Gups {
   def main(args:Array[String]) {
+    if (args.length < 6) {
+      println("usage: <myid> <hostsfile> <ppn> <numupdates> <Asize> <baseport>")
+      System.exit(1)
+    }
+
     val myid = args(0).toInt
     val hostsfile = args(1)
     val ppn = args(2).toInt
-
+    val numUpdates = args(3).toLong
+    val AGlobalSize = args(4).toLong
     // assign all different ports just to ensure same processes don't conflict
-    val baseport = 4400
+    val baseport = args(5).toInt
+
 
     val hosts = new util.ArrayList[ConnectionManagerId]
     var hostId = 0
@@ -36,8 +43,6 @@ object Gups {
     // only way to let connection manager use the appropriate hostname
     org.apache.spark.util.Utils.setCustomHostname(hosts.get(myid).host)
 
-
-    val AGlobalSize = 1e2.toInt
     val nprocesses = hosts.size()
     val dist = new BlockDistribution(nprocesses, AGlobalSize);
     val ALocal = Array.fill[Int](dist.getRangeForBlock(myid).size())(0)
@@ -49,7 +54,7 @@ object Gups {
       val ind = msg.getChunkForReceiving(4).get.buffer.getInt();
 
       val localOffset = ind - dist.getRangeForBlock(myid).leftInclusive
-      println("Received [" + msg + "]("+ ind + ") to local offset " + localOffset + " from [" + id + "]")
+      println(myid + " Received [" + msg + "]("+ ind + ") to local offset " + localOffset + " from [" + id + "]")
 
       if (ind < dist.getRangeForBlock(myid).leftInclusive
         || ind >= dist.getRangeForBlock(myid).rightExclusive)
@@ -62,7 +67,6 @@ object Gups {
 
     /////////////////////////////
     // Generate B
-    val numUpdates = 1e3.toLong
     val rand = new Random();
     System.out.print("Generating B[]...");
     val B = new ArrayBuffer[Int]()
